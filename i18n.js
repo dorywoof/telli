@@ -14,7 +14,7 @@ export const I18N = {
   tr: {
     mode: "Mod", key: "Anahtar", instrument: "Enstrüman", leftHand: "Sol el", rightHand: "Sağ el", language: "Dil",
     modeGesture: "El Hareketi", modeTheremin: "Theremin",
-    instSynth: "Synth", instOrgan: "Org", instPiano: "Piyano", instGuitar: "Gitar",
+    instSynth: "Synth", instOrgan: "Org", instPiano: "Piyano", instGuitar: "Gitar", instElectric: "Elektro Gitar",
     leftTilt: "Eğim: majör/minör", leftMajor: "Hep majör", leftMinor: "Hep minör",
     rightFingers: "Parmaklar: akor stili", rightFixedTriad: "Sabit: Üçlü", rightFixedSeventh: "Sabit: 7'li",
     cardLeftTitle: "Sol el = nota",
@@ -31,7 +31,7 @@ export const I18N = {
   en: {
     mode: "Mode", key: "Key", instrument: "Instrument", leftHand: "Left hand", rightHand: "Right hand", language: "Language",
     modeGesture: "Gesture", modeTheremin: "Theremin",
-    instSynth: "Synth", instOrgan: "Organ", instPiano: "Piano", instGuitar: "Guitar",
+    instSynth: "Synth", instOrgan: "Organ", instPiano: "Piano", instGuitar: "Guitar", instElectric: "Electric Guitar",
     leftTilt: "Tilt: major/minor", leftMajor: "Always major", leftMinor: "Always minor",
     rightFingers: "Fingers: chord style", rightFixedTriad: "Fixed: Triad", rightFixedSeventh: "Fixed: 7th",
     cardLeftTitle: "Left hand = notes",
@@ -48,7 +48,7 @@ export const I18N = {
   es: {
     mode: "Modo", key: "Tono", instrument: "Instrumento", leftHand: "Mano izq.", rightHand: "Mano der.", language: "Idioma",
     modeGesture: "Gestos", modeTheremin: "Theremin",
-    instSynth: "Synth", instOrgan: "Órgano", instPiano: "Piano", instGuitar: "Guitarra",
+    instSynth: "Synth", instOrgan: "Órgano", instPiano: "Piano", instGuitar: "Guitarra", instElectric: "Guitarra eléctrica",
     leftTilt: "Inclinación: mayor/menor", leftMajor: "Siempre mayor", leftMinor: "Siempre menor",
     rightFingers: "Dedos: estilo de acorde", rightFixedTriad: "Fijo: Tríada", rightFixedSeventh: "Fijo: 7ª",
     cardLeftTitle: "Mano izquierda = notas",
@@ -65,7 +65,7 @@ export const I18N = {
   pt: {
     mode: "Modo", key: "Tom", instrument: "Instrumento", leftHand: "Mão esq.", rightHand: "Mão dir.", language: "Idioma",
     modeGesture: "Gestos", modeTheremin: "Theremin",
-    instSynth: "Synth", instOrgan: "Órgão", instPiano: "Piano", instGuitar: "Violão",
+    instSynth: "Synth", instOrgan: "Órgão", instPiano: "Piano", instGuitar: "Violão", instElectric: "Guitarra elétrica",
     leftTilt: "Inclinação: maior/menor", leftMajor: "Sempre maior", leftMinor: "Sempre menor",
     rightFingers: "Dedos: estilo de acorde", rightFixedTriad: "Fixo: Tríade", rightFixedSeventh: "Fixo: 7ª",
     cardLeftTitle: "Mão esquerda = notas",
@@ -82,7 +82,7 @@ export const I18N = {
   de: {
     mode: "Modus", key: "Tonart", instrument: "Instrument", leftHand: "Linke Hand", rightHand: "Rechte Hand", language: "Sprache",
     modeGesture: "Gesten", modeTheremin: "Theremin",
-    instSynth: "Synth", instOrgan: "Orgel", instPiano: "Klavier", instGuitar: "Gitarre",
+    instSynth: "Synth", instOrgan: "Orgel", instPiano: "Klavier", instGuitar: "Gitarre", instElectric: "E-Gitarre",
     leftTilt: "Neigung: Dur/Moll", leftMajor: "Immer Dur", leftMinor: "Immer Moll",
     rightFingers: "Finger: Akkordstil", rightFixedTriad: "Fest: Dreiklang", rightFixedSeventh: "Fest: Septime",
     cardLeftTitle: "Linke Hand = Noten",
@@ -99,7 +99,7 @@ export const I18N = {
   fr: {
     mode: "Mode", key: "Tonalité", instrument: "Instrument", leftHand: "Main gauche", rightHand: "Main droite", language: "Langue",
     modeGesture: "Gestes", modeTheremin: "Thérémine",
-    instSynth: "Synthé", instOrgan: "Orgue", instPiano: "Piano", instGuitar: "Guitare",
+    instSynth: "Synthé", instOrgan: "Orgue", instPiano: "Piano", instGuitar: "Guitare", instElectric: "Guitare électrique",
     leftTilt: "Inclinaison : maj/min", leftMajor: "Toujours majeur", leftMinor: "Toujours mineur",
     rightFingers: "Doigts : style d'accord", rightFixedTriad: "Fixe : Triade", rightFixedSeventh: "Fixe : 7e",
     cardLeftTitle: "Main gauche = notes",
@@ -116,7 +116,7 @@ export const I18N = {
   ru: {
     mode: "Режим", key: "Тональность", instrument: "Инструмент", leftHand: "Левая рука", rightHand: "Правая рука", language: "Язык",
     modeGesture: "Жесты", modeTheremin: "Терменвокс",
-    instSynth: "Синт", instOrgan: "Орган", instPiano: "Пианино", instGuitar: "Гитара",
+    instSynth: "Синт", instOrgan: "Орган", instPiano: "Пианино", instGuitar: "Гитара", instElectric: "Электрогитара",
     leftTilt: "Наклон: мажор/минор", leftMajor: "Всегда мажор", leftMinor: "Всегда минор",
     rightFingers: "Пальцы: стиль аккорда", rightFixedTriad: "Всегда трезвучие", rightFixedSeventh: "Всегда септаккорд",
     cardLeftTitle: "Левая рука = ноты",
@@ -133,7 +133,7 @@ export const I18N = {
   ja: {
     mode: "モード", key: "キー", instrument: "楽器", leftHand: "左手", rightHand: "右手", language: "言語",
     modeGesture: "ジェスチャー", modeTheremin: "テルミン",
-    instSynth: "シンセ", instOrgan: "オルガン", instPiano: "ピアノ", instGuitar: "ギター",
+    instSynth: "シンセ", instOrgan: "オルガン", instPiano: "ピアノ", instGuitar: "ギター", instElectric: "エレキギター",
     leftTilt: "傾き:メジャー/マイナー", leftMajor: "常にメジャー", leftMinor: "常にマイナー",
     rightFingers: "指:コードスタイル", rightFixedTriad: "固定:トライアド", rightFixedSeventh: "固定:7th",
     cardLeftTitle: "左手 = 音",
@@ -150,7 +150,7 @@ export const I18N = {
   ko: {
     mode: "모드", key: "조", instrument: "악기", leftHand: "왼손", rightHand: "오른손", language: "언어",
     modeGesture: "제스처", modeTheremin: "테레민",
-    instSynth: "신스", instOrgan: "오르간", instPiano: "피아노", instGuitar: "기타",
+    instSynth: "신스", instOrgan: "오르간", instPiano: "피아노", instGuitar: "기타", instElectric: "일렉 기타",
     leftTilt: "기울기: 메이저/마이너", leftMajor: "항상 메이저", leftMinor: "항상 마이너",
     rightFingers: "손가락: 코드 스타일", rightFixedTriad: "고정: 3화음", rightFixedSeventh: "고정: 7th",
     cardLeftTitle: "왼손 = 음",

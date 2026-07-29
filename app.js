@@ -79,6 +79,7 @@ function applyI18n() {
   instEl.options[1].textContent = t("instOrgan");
   instEl.options[2].textContent = t("instPiano");
   instEl.options[3].textContent = t("instGuitar");
+  instEl.options[4].textContent = t("instElectric");
   leftSettingEl.options[0].textContent = t("leftTilt");
   leftSettingEl.options[1].textContent = t("leftMajor");
   leftSettingEl.options[2].textContent = t("leftMinor");
@@ -119,7 +120,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
 let bus, filter, sustainGain, oscs = [], thereminOsc, thereminGain;
-let guitarPlucks = [], piano;
+let guitarPlucks = [], electricPlucks = [], piano;
 
 function initAudio() {
   const limiter = new Tone.Limiter(-2).toDestination();
@@ -144,6 +145,15 @@ function initAudio() {
     guitarPlucks.push({ synth, gain });
   }
 
+  const chorus = new Tone.Chorus({ frequency: 1.2, delayTime: 3, depth: 0.4, wet: 0.5 }).connect(bus);
+  chorus.start();
+  const distortion = new Tone.Distortion(0.35).connect(chorus);
+  for (let i = 0; i < 4; i++) {
+    const gain = new Tone.Gain(1).connect(distortion);
+    const synth = new Tone.PluckSynth({ attackNoise: 0.6, dampening: 2600, resonance: 0.985 }).connect(gain);
+    electricPlucks.push({ synth, gain });
+  }
+
   piano = new Tone.Sampler({
     urls: {
       "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3", "A2": "A2.mp3",
@@ -164,7 +174,8 @@ function triggerChord(midis, vel) {
     if (inst === "piano") {
       if (piano.loaded) piano.triggerAttackRelease(freq, "1n", t, 0.3 + 0.6 * vel);
     } else {
-      const s = guitarPlucks[k % guitarPlucks.length];
+      const set = inst === "electric" ? electricPlucks : guitarPlucks;
+      const s = set[k % set.length];
       s.gain.gain.setValueAtTime(0.3 + 0.7 * vel, t);
       s.synth.triggerAttack(freq, t);
     }
@@ -402,7 +413,7 @@ function loop() {
     setSustainTargets(midis, volume);
 
     const inst = instEl.value;
-    if (inst === "piano" || inst === "guitar") {
+    if (inst === "piano" || inst === "guitar" || inst === "electric") {
       const chordKey = [degree, minor, qualityIdx, octDown, keyEl.value].join("|");
       if (volume > 0.06 && chordKey !== lastChordKey) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
