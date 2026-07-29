@@ -183,8 +183,8 @@ function smoothLandmarks(key, pts) {
     return lmSmooth[key];
   }
   for (let i = 0; i < pts.length; i++) {
-    prev[i].x += (pts[i].x - prev[i].x) * 0.65;
-    prev[i].y += (pts[i].y - prev[i].y) * 0.65;
+    prev[i].x += (pts[i].x - prev[i].x) * 0.45;
+    prev[i].y += (pts[i].y - prev[i].y) * 0.45;
   }
   return prev;
 }
@@ -274,7 +274,7 @@ function initAudio() {
       "C5": "C5.mp3",
     },
     baseUrl: "https://tonejs.github.io/audio/salamander/",
-    release: 1.6,
+    release: 2.5,
   }).connect(bus);
 }
 
@@ -287,7 +287,7 @@ function triggerChord(midis, vel) {
     const v = Math.min(1, (0.3 + 0.6 * vel) * (0.85 + Math.random() * 0.3));
     const freq = midiToFreq(m);
     if (inst === "piano") {
-      if (piano.loaded) piano.triggerAttackRelease(freq, 3.5, t, v);
+      if (piano.loaded) piano.triggerAttackRelease(freq, 5, t, v);
       return;
     }
     const sampler = inst === "electric" ? electricSampler : guitarSampler;
@@ -404,24 +404,31 @@ function mapPoint(lm) {
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
-function fingerExtended(pts, mcp, pip, tip) {
+const fingerState = { left: {}, right: {} };
+
+function fingerExtended(pts, mcp, pip, tip, wasUp) {
   const v1x = pts[mcp].x - pts[pip].x, v1y = pts[mcp].y - pts[pip].y;
   const v2x = pts[tip].x - pts[pip].x, v2y = pts[tip].y - pts[pip].y;
   const cos = (v1x * v2x + v1y * v2y) /
     (Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y) + 1e-6);
-  return cos < -0.55 && dist(pts[tip], pts[0]) > dist(pts[pip], pts[0]);
+  const distOk = dist(pts[tip], pts[0]) > dist(pts[pip], pts[0]);
+  return (cos < (wasUp ? -0.35 : -0.6)) && distOk;
 }
 
-function fingersUp(pts) {
-  return {
-    index: fingerExtended(pts, 5, 6, 8),
-    middle: fingerExtended(pts, 9, 10, 12),
-    ring: fingerExtended(pts, 13, 14, 16),
-    pinky: fingerExtended(pts, 17, 18, 20),
-    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.12 ||
-      dist(pts[4], pts[5]) > dist(pts[0], pts[9]) * 0.45 ||
-      dist(pts[4], pts[9]) > dist(pts[0], pts[9]) * 0.95,
-  };
+function fingersUp(pts, key) {
+  const st = fingerState[key];
+  const joints = { index: [5, 6, 8], middle: [9, 10, 12], ring: [13, 14, 16], pinky: [17, 18, 20] };
+  const up = {};
+  for (const k in joints) {
+    up[k] = fingerExtended(pts, joints[k][0], joints[k][1], joints[k][2], !!st[k]);
+    st[k] = up[k];
+  }
+  const palm = dist(pts[0], pts[9]);
+  up.thumb = dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * (st.thumb ? 1.06 : 1.18) ||
+    dist(pts[4], pts[5]) > palm * (st.thumb ? 0.38 : 0.5) ||
+    dist(pts[4], pts[9]) > palm * (st.thumb ? 0.85 : 1.0);
+  st.thumb = up.thumb;
+  return up;
 }
 
 function handTilt(pts) {
@@ -431,7 +438,7 @@ function handTilt(pts) {
 }
 
 function analyzeLeft(pts) {
-  const up = fingersUp(pts);
+  const up = fingersUp(pts, "left");
   let degree = null;
   if (up.index && up.pinky && !up.middle && !up.ring) {
     degree = up.thumb ? 7 : 6;
@@ -449,7 +456,7 @@ function analyzeLeft(pts) {
 }
 
 function analyzeRight(pts) {
-  const up = fingersUp(pts);
+  const up = fingersUp(pts, "right");
   const nonThumb = ["index", "middle", "ring", "pinky"].filter(k => up[k]).length;
   const palm = dist(pts[0], pts[9]);
   const volY = clamp((0.9 - pts[0].y / canvas.height) / 0.35, 0, 1);
@@ -569,7 +576,7 @@ function loop() {
   const L = leftPts ? analyzeLeft(leftPts) : null;
   const R = rightPts ? analyzeRight(rightPts) : null;
 
-  const degree = stabilize(L ? L.degree : null, degreeState, 220);
+  const degree = stabilize(L ? L.degree : null, degreeState, 300);
 
   let minor = false;
   if (leftSettingEl.value === "tilt") minor = L ? L.tilted : false;
@@ -577,7 +584,7 @@ function loop() {
 
   let qualityIdx = 0;
   if (rightSettingEl.value === "fingers") {
-    qualityIdx = stabilize(R ? R.quality : null, qualityState, 180) ?? 0;
+    qualityIdx = stabilize(R ? R.quality : null, qualityState, 250) ?? 0;
   } else {
     qualityIdx = parseInt(rightSettingEl.value, 10);
   }
