@@ -218,8 +218,32 @@ html, body {
 }
 
 @media (max-width: 900px) {
-  .topbar { padding: 10px 14px; gap: 12px; }
-  .controls { gap: 8px; font-size: 12px; }
-  .readout .chord { font-size: 44px; }
-  #start-screen h1 { font-size: 36px; letter-spacing: 6px; }
+  .topbar { padding: 8px 10px; gap: 10px; }
+  .logo { font-size: 15px; letter-spacing: 3px; }
+  .controls {
+    gap: 8px;
+    font-size: 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .controls::-webkit-scrollbar { display: none; }
+  .controls select { padding: 7px 8px; font-size: 12px; }
+  .readout { bottom: 12px; gap: 4px; }
+  .readout .chord { font-size: 40px; }
+  .readout .detail { font-size: 11px; letter-spacing: 1px; }
+  .volwrap { width: 150px; }
+  #start-screen {
+    gap: 18px;
+    justify-content: flex-start;
+    padding: 60px 18px 32px;
+    overflow-y: auto;
+  }
+  #start-screen h1 { font-size: 32px; letter-spacing: 6px; }
+  .cards { gap: 10px; }
+  .card { flex: 1 1 100%; max-width: 440px; padding: 14px 16px; }
+  .card p { font-size: 12.5px; line-height: 1.6; }
+  #start-btn { padding: 14px 38px; font-size: 15px; }
 }

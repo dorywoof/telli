@@ -110,6 +110,7 @@ let lastTriggerAt = 0;
 const degreeState = { committed: null, cand: null, count: 0 };
 const qualityState = { committed: null, cand: null, count: 0 };
 const lmSmooth = { left: null, right: null };
+const roles = { left: null, right: null };
 
 function smoothLandmarks(key, pts) {
   const prev = lmSmooth[key];
@@ -142,7 +143,7 @@ let guitarPlucks = [], electricPlucks = [], piano, guitarSampler, electricSample
 function initAudio() {
   const limiter = new Tone.Limiter(-2).toDestination();
   const reverb = new Tone.Reverb({ decay: 2.4, wet: 0.25 }).connect(limiter);
-  bus = new Tone.Gain(0.9).connect(reverb);
+  bus = new Tone.Gain(0.8).connect(reverb);
 
   const shimmer = new Tone.Chorus({ frequency: 0.6, delayTime: 3.5, depth: 0.5, wet: 0.3 }).connect(bus);
   shimmer.start();
@@ -299,7 +300,7 @@ startBtn.addEventListener("click", async () => {
 
     statusEl.textContent = t("statusCamera");
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+      video: { width: { ideal: 960 }, height: { ideal: 540 }, facingMode: "user" },
       audio: false,
     });
     video.srcObject = stream;
@@ -422,9 +423,9 @@ function setSustainTargets(midis, targetVol) {
   const wave = inst === "organ" ? "sine" : "sawtooth";
   oscs.forEach((o, i) => {
     if (o.type !== wave) o.type = wave;
-    if (midis && midis[i] !== undefined) o.frequency.rampTo(midiToFreq(midis[i]), 0.08);
+    if (midis && midis[i] !== undefined) o.frequency.rampTo(midiToFreq(midis[i]), 0.12);
   });
-  sustainGain.gain.rampTo(sustained ? targetVol * 0.22 : 0, 0.07);
+  sustainGain.gain.rampTo(sustained ? targetVol * 0.22 : 0, 0.12);
 }
 
 function loop() {
@@ -436,28 +437,29 @@ function loop() {
 
   if (video.videoWidth > 0) {
     const res = landmarker.detectForVideo(video, now);
-    const hands = (res.landmarks || []).map((lm, i) => ({
-      mapped: lm.map(mapPoint),
-      label: res.handedness?.[i]?.[0]?.categoryName || null,
-    }));
+    const hands = (res.landmarks || []).map(lm => lm.map(mapPoint));
 
-    if (hands.length === 1) {
-      const h = hands[0];
-      if (h.label === "Right") rightPts = h.mapped;
-      else if (h.label === "Left") leftPts = h.mapped;
-      else if (h.mapped[0].x > canvas.width / 2) rightPts = h.mapped;
-      else leftPts = h.mapped;
-    } else if (hands.length >= 2) {
-      const sorted = [hands[0], hands[1]].sort((a, b) => a.mapped[0].x - b.mapped[0].x);
-      leftPts = sorted[0].mapped;
-      rightPts = sorted[1].mapped;
-      const byLabel = { Left: null, Right: null };
-      for (const h of [hands[0], hands[1]]) if (h.label) byLabel[h.label] = h.mapped;
-      if (byLabel.Left && byLabel.Right) {
-        leftPts = byLabel.Left;
-        rightPts = byLabel.Right;
+    if (hands.length >= 2) {
+      const sorted = [hands[0], hands[1]].sort((a, b) => a[0].x - b[0].x);
+      leftPts = sorted[0];
+      rightPts = sorted[1];
+    } else if (hands.length === 1) {
+      const p = hands[0][0];
+      const dl = roles.left && now - roles.left.seenAt < 700
+        ? Math.hypot(p.x - roles.left.x, p.y - roles.left.y) : Infinity;
+      const dr = roles.right && now - roles.right.seenAt < 700
+        ? Math.hypot(p.x - roles.right.x, p.y - roles.right.y) : Infinity;
+      if (dl === Infinity && dr === Infinity) {
+        if (p.x < canvas.width / 2) leftPts = hands[0]; else rightPts = hands[0];
+      } else if (dl <= dr) {
+        leftPts = hands[0];
+      } else {
+        rightPts = hands[0];
       }
     }
+
+    if (leftPts) roles.left = { x: leftPts[0].x, y: leftPts[0].y, seenAt: now };
+    if (rightPts) roles.right = { x: rightPts[0].x, y: rightPts[0].y, seenAt: now };
   }
 
   leftPts = leftPts ? smoothLandmarks("left", leftPts) : (lmSmooth.left = null);
@@ -490,7 +492,7 @@ function loop() {
   const L = leftPts ? analyzeLeft(leftPts) : null;
   const R = rightPts ? analyzeRight(rightPts) : null;
 
-  const degree = stabilize(L ? L.degree : null, degreeState);
+  const degree = stabilize(L ? L.degree : null, degreeState, 5);
 
   let minor = false;
   if (leftSettingEl.value === "tilt") minor = L ? L.tilted : false;
@@ -498,7 +500,7 @@ function loop() {
 
   let qualityIdx = 0;
   if (rightSettingEl.value === "fingers") {
-    qualityIdx = stabilize(R ? R.quality : null, qualityState) ?? 0;
+    qualityIdx = stabilize(R ? R.quality : null, qualityState, 4) ?? 0;
   } else {
     qualityIdx = parseInt(rightSettingEl.value, 10);
   }
@@ -508,7 +510,7 @@ function loop() {
   filter.frequency.rampTo(500 + tone * 3200, 0.08);
 
   const targetVol = degree === null ? 0 : (R ? 0.3 + 0.7 * R.volY : 0.65);
-  volume = lerp(volume, targetVol, 0.25);
+  volume = lerp(volume, targetVol, 0.15);
   volBar.style.width = Math.round(clamp(volume, 0, 1) * 100) + "%";
 
   if (degree !== null) {
@@ -524,7 +526,7 @@ function loop() {
     if (inst === "piano" || inst === "guitar" || inst === "electric") {
       const chordKey = [degree, minor, qualityIdx, octDown, keyEl.value].join("|");
       const bounced = R && (R.volY - prevRVol) > 0.08 && performance.now() - lastTriggerAt > 260;
-      if (volume > 0.06 && (chordKey !== lastChordKey || bounced)) {
+      if (volume > 0.06 && (chordKey !== lastChordKey || bounced) && performance.now() - lastTriggerAt > 140) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
         lastChordKey = chordKey;
         lastTriggerAt = performance.now();
