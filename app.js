@@ -171,8 +171,8 @@ let thereminVol = 0;
 let tiltMinor = false;
 let lastTriggerAt = 0;
 
-const degreeState = { committed: null, cand: null, count: 0 };
-const qualityState = { committed: null, cand: null, count: 0 };
+const degreeState = { committed: null, cand: null, since: 0 };
+const qualityState = { committed: null, cand: null, since: 0 };
 const lmSmooth = { left: null, right: null };
 const roles = { left: null, right: null };
 
@@ -189,11 +189,16 @@ function smoothLandmarks(key, pts) {
   return prev;
 }
 
-function stabilize(raw, s, dwell = 3) {
-  if (raw === null || raw === undefined) { s.committed = null; s.cand = null; s.count = 0; return null; }
-  if (raw === s.committed) { s.cand = raw; s.count = 0; return s.committed; }
-  if (raw === s.cand) s.count++; else { s.cand = raw; s.count = 1; }
-  if (s.count >= dwell) { s.committed = raw; s.count = 0; }
+function stabilize(raw, s, holdMs = 200) {
+  const nowT = performance.now();
+  if (raw === null || raw === undefined) { s.committed = null; s.cand = null; s.since = 0; return null; }
+  if (raw === s.committed) { s.cand = raw; s.since = nowT; return s.committed; }
+  if (raw !== s.cand) {
+    s.cand = raw;
+    s.since = nowT;
+  } else if (nowT - s.since >= holdMs) {
+    s.committed = raw;
+  }
   return s.committed;
 }
 
@@ -269,6 +274,7 @@ function initAudio() {
       "C5": "C5.mp3",
     },
     baseUrl: "https://tonejs.github.io/audio/salamander/",
+    release: 1.6,
   }).connect(bus);
 }
 
@@ -281,7 +287,7 @@ function triggerChord(midis, vel) {
     const v = Math.min(1, (0.3 + 0.6 * vel) * (0.85 + Math.random() * 0.3));
     const freq = midiToFreq(m);
     if (inst === "piano") {
-      if (piano.loaded) piano.triggerAttackRelease(freq, "1n", t, v);
+      if (piano.loaded) piano.triggerAttackRelease(freq, 3.5, t, v);
       return;
     }
     const sampler = inst === "electric" ? electricSampler : guitarSampler;
@@ -563,7 +569,7 @@ function loop() {
   const L = leftPts ? analyzeLeft(leftPts) : null;
   const R = rightPts ? analyzeRight(rightPts) : null;
 
-  const degree = stabilize(L ? L.degree : null, degreeState, 5);
+  const degree = stabilize(L ? L.degree : null, degreeState, 220);
 
   let minor = false;
   if (leftSettingEl.value === "tilt") minor = L ? L.tilted : false;
@@ -571,7 +577,7 @@ function loop() {
 
   let qualityIdx = 0;
   if (rightSettingEl.value === "fingers") {
-    qualityIdx = stabilize(R ? R.quality : null, qualityState, 4) ?? 0;
+    qualityIdx = stabilize(R ? R.quality : null, qualityState, 180) ?? 0;
   } else {
     qualityIdx = parseInt(rightSettingEl.value, 10);
   }
