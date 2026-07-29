@@ -288,8 +288,8 @@ startBtn.addEventListener("click", async () => {
       },
       runningMode: "VIDEO",
       numHands: 2,
-      minHandDetectionConfidence: 0.5,
-      minHandPresenceConfidence: 0.5,
+      minHandDetectionConfidence: 0.6,
+      minHandPresenceConfidence: 0.6,
       minTrackingConfidence: 0.5,
     };
     try {
@@ -301,7 +301,7 @@ startBtn.addEventListener("click", async () => {
 
     statusEl.textContent = t("statusCamera");
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 960 }, height: { ideal: 540 }, facingMode: "user" },
+      video: { width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 60 }, facingMode: "user" },
       audio: false,
     });
     video.srcObject = stream;
@@ -349,8 +349,9 @@ function fingersUp(pts) {
     middle: fingerExtended(pts, 9, 10, 12),
     ring: fingerExtended(pts, 13, 14, 16),
     pinky: fingerExtended(pts, 17, 18, 20),
-    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.18 ||
-      dist(pts[4], pts[5]) > dist(pts[0], pts[9]) * 0.55,
+    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.12 ||
+      dist(pts[4], pts[5]) > dist(pts[0], pts[9]) * 0.45 ||
+      dist(pts[4], pts[9]) > dist(pts[0], pts[9]) * 0.95,
   };
 }
 
@@ -439,7 +440,12 @@ function loop() {
 
   if (video.videoWidth > 0) {
     const res = landmarker.detectForVideo(video, now);
-    const hands = (res.landmarks || []).map(lm => lm.map(mapPoint));
+    let hands = (res.landmarks || []).map(lm => lm.map(mapPoint));
+
+    if (hands.length >= 2) {
+      const gap = Math.hypot(hands[0][0].x - hands[1][0].x, hands[0][0].y - hands[1][0].y);
+      if (gap < dist(hands[0][0], hands[0][9]) * 1.5) hands = [hands[0]];
+    }
 
     if (hands.length >= 2) {
       const sorted = [hands[0], hands[1]].sort((a, b) => a[0].x - b[0].x);
@@ -447,9 +453,9 @@ function loop() {
       rightPts = sorted[1];
     } else if (hands.length === 1) {
       const p = hands[0][0];
-      const dl = roles.left && now - roles.left.seenAt < 700
+      const dl = roles.left && now - roles.left.seenAt < 400
         ? Math.hypot(p.x - roles.left.x, p.y - roles.left.y) : Infinity;
-      const dr = roles.right && now - roles.right.seenAt < 700
+      const dr = roles.right && now - roles.right.seenAt < 400
         ? Math.hypot(p.x - roles.right.x, p.y - roles.right.y) : Infinity;
       if (dl === Infinity && dr === Infinity) {
         if (p.x > canvas.width * 0.68) rightPts = hands[0]; else leftPts = hands[0];
@@ -472,7 +478,7 @@ function loop() {
       const dt = Math.max(0.016, (now - rMotion.t) / 1000);
       const move = Math.hypot(p.x - rMotion.x, p.y - rMotion.y) / canvas.height / dt;
       const zoom = Math.abs(palm - rMotion.palm) / Math.max(palm, 1) / dt;
-      shake = move > 0.5 || zoom > 0.35;
+      shake = move > 0.4 || zoom > 0.22;
     }
     rMotion.x = p.x;
     rMotion.y = p.y;
