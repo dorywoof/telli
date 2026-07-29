@@ -282,7 +282,7 @@ function analyzeRight(pts) {
   const up = fingersUp(pts);
   const nonThumb = ["index", "middle", "ring", "pinky"].filter(k => up[k]).length;
   const palm = dist(pts[0], pts[9]);
-  const volY = clamp((0.85 - pts[0].y / canvas.height) / 0.6, 0, 1);
+  const volY = clamp((0.9 - pts[0].y / canvas.height) / 0.35, 0, 1);
   const tilt = handTilt(pts);
   return {
     quality: nonThumb >= 1 ? Math.min(nonThumb, 4) - 1 : null,
@@ -399,7 +399,7 @@ function loop() {
   tone = lerp(tone, R ? R.tonePct : 0.5, 0.15);
   filter.frequency.rampTo(500 + tone * 3200, 0.08);
 
-  const targetVol = degree === null ? 0 : (R ? 0.2 + 0.8 * Math.pow(R.volY, 1.2) : 0.6);
+  const targetVol = degree === null ? 0 : (R ? 0.3 + 0.7 * R.volY : 0.65);
   volume = lerp(volume, targetVol, 0.25);
   volBar.style.width = Math.round(clamp(volume, 0, 1) * 100) + "%";
 
