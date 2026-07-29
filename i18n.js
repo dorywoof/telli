@@ -26,6 +26,7 @@ export const I18N = {
     start: "Kamerayı Aç ve Başla",
     statusAudio: "Ses motoru başlatılıyor...", statusModel: "El takip modeli yükleniyor...", statusCamera: "Kamera açılıyor...", error: "Hata: ",
     major: "MAJÖR", minor: "MİNÖR", octDown: "-1 OKTAV", showLeftHand: "SOL ELİNİ GÖSTER", theremin: "THEREMİN",
+    customize: "Özelleştir", customTitle: "Parmaklara akor ata", reset: "Sıfırla", close: "Kapat",
     qualities: ["Üçlü", "1. Çevrim", "7'li", "9'lu"],
   },
   en: {
@@ -43,6 +44,7 @@ export const I18N = {
     start: "Enable Camera & Start",
     statusAudio: "Starting audio engine...", statusModel: "Loading hand tracking model...", statusCamera: "Opening camera...", error: "Error: ",
     major: "MAJOR", minor: "MINOR", octDown: "-1 OCTAVE", showLeftHand: "SHOW YOUR LEFT HAND", theremin: "THEREMIN",
+    customize: "Customize", customTitle: "Assign chords to finger counts", reset: "Reset", close: "Close",
     qualities: ["Triad", "1st Inv", "7th", "9th"],
   },
   es: {
@@ -60,6 +62,7 @@ export const I18N = {
     start: "Activar cámara y empezar",
     statusAudio: "Iniciando el motor de audio...", statusModel: "Cargando el modelo de manos...", statusCamera: "Abriendo la cámara...", error: "Error: ",
     major: "MAYOR", minor: "MENOR", octDown: "-1 OCTAVA", showLeftHand: "MUESTRA TU MANO IZQUIERDA", theremin: "THEREMIN",
+    customize: "Personalizar", customTitle: "Asigna acordes a los dedos", reset: "Restablecer", close: "Cerrar",
     qualities: ["Tríada", "1ª Inv", "7ª", "9ª"],
   },
   pt: {
@@ -77,6 +80,7 @@ export const I18N = {
     start: "Ativar câmera e começar",
     statusAudio: "Iniciando o áudio...", statusModel: "Carregando o modelo de mãos...", statusCamera: "Abrindo a câmera...", error: "Erro: ",
     major: "MAIOR", minor: "MENOR", octDown: "-1 OITAVA", showLeftHand: "MOSTRE A MÃO ESQUERDA", theremin: "THEREMIN",
+    customize: "Personalizar", customTitle: "Atribua acordes aos dedos", reset: "Redefinir", close: "Fechar",
     qualities: ["Tríade", "1ª Inv", "7ª", "9ª"],
   },
   de: {
@@ -94,6 +98,7 @@ export const I18N = {
     start: "Kamera aktivieren & starten",
     statusAudio: "Audio wird gestartet...", statusModel: "Handmodell wird geladen...", statusCamera: "Kamera wird geöffnet...", error: "Fehler: ",
     major: "DUR", minor: "MOLL", octDown: "-1 OKTAVE", showLeftHand: "ZEIGE DEINE LINKE HAND", theremin: "THEREMIN",
+    customize: "Anpassen", customTitle: "Akkorde den Fingern zuweisen", reset: "Zurücksetzen", close: "Schließen",
     qualities: ["Dreiklang", "1. Umk.", "Septime", "None"],
   },
   fr: {
@@ -111,6 +116,7 @@ export const I18N = {
     start: "Activer la caméra et commencer",
     statusAudio: "Démarrage de l'audio...", statusModel: "Chargement du modèle de mains...", statusCamera: "Ouverture de la caméra...", error: "Erreur : ",
     major: "MAJEUR", minor: "MINEUR", octDown: "-1 OCTAVE", showLeftHand: "MONTREZ VOTRE MAIN GAUCHE", theremin: "THÉRÉMINE",
+    customize: "Personnaliser", customTitle: "Assignez des accords aux doigts", reset: "Réinitialiser", close: "Fermer",
     qualities: ["Triade", "1er renv.", "7e", "9e"],
   },
   ru: {
@@ -128,6 +134,7 @@ export const I18N = {
     start: "Включить камеру и начать",
     statusAudio: "Запуск аудио...", statusModel: "Загрузка модели рук...", statusCamera: "Открытие камеры...", error: "Ошибка: ",
     major: "МАЖОР", minor: "МИНОР", octDown: "-1 ОКТАВА", showLeftHand: "ПОКАЖИТЕ ЛЕВУЮ РУКУ", theremin: "ТЕРМЕНВОКС",
+    customize: "Настроить", customTitle: "Назначьте аккорды пальцам", reset: "Сброс", close: "Закрыть",
     qualities: ["Трезвучие", "1-е обращ.", "Септима", "Нона"],
   },
   ja: {
@@ -145,6 +152,7 @@ export const I18N = {
     start: "カメラを起動して開始",
     statusAudio: "オーディオを起動中...", statusModel: "ハンドトラッキングモデルを読み込み中...", statusCamera: "カメラを起動中...", error: "エラー: ",
     major: "メジャー", minor: "マイナー", octDown: "-1 オクターブ", showLeftHand: "左手を見せてください", theremin: "テルミン",
+    customize: "カスタム", customTitle: "指にコードを割り当て", reset: "リセット", close: "閉じる",
     qualities: ["トライアド", "第1転回", "7th", "9th"],
   },
   ko: {
@@ -162,6 +170,7 @@ export const I18N = {
     start: "카메라 켜고 시작",
     statusAudio: "오디오 시작 중...", statusModel: "손 추적 모델 로드 중...", statusCamera: "카메라 여는 중...", error: "오류: ",
     major: "메이저", minor: "마이너", octDown: "-1 옥타브", showLeftHand: "왼손을 보여주세요", theremin: "테레민",
+    customize: "커스텀", customTitle: "손가락에 코드 지정", reset: "초기화", close: "닫기",
     qualities: ["3화음", "첫째 자리바꿈", "7th", "9th"],
   },
 };

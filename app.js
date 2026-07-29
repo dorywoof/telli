@@ -48,6 +48,66 @@ NOTE_NAMES.forEach((n, i) => {
 let lang = pickLang();
 const t = k => I18N[lang][k] ?? I18N.en[k];
 
+const SLOT_LABELS = ["1", "2", "3", "4", "5", "VI", "VII"];
+let customMap = null;
+try { customMap = JSON.parse(localStorage.getItem("telli-map")); } catch {}
+if (!Array.isArray(customMap) || customMap.length !== 7 || customMap.some(v => !Number.isInteger(v) || v < 0 || v > 11)) {
+  customMap = null;
+}
+
+function slotRootDefault(i) {
+  return (parseInt(keyEl.value, 10) + DEGREE_OFFSETS[i]) % 12;
+}
+
+function slotRoot(i) {
+  return customMap ? customMap[i] : slotRootDefault(i);
+}
+
+const customPanel = document.getElementById("customPanel");
+const customRows = document.getElementById("customRows");
+
+function buildCustomRows() {
+  customRows.innerHTML = "";
+  SLOT_LABELS.forEach((label, i) => {
+    const row = document.createElement("div");
+    row.className = "panel-row";
+    const span = document.createElement("span");
+    span.textContent = label;
+    const sel = document.createElement("select");
+    NOTE_NAMES.forEach((n, v) => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = n;
+      sel.appendChild(opt);
+    });
+    sel.value = slotRoot(i);
+    sel.addEventListener("change", () => {
+      if (!customMap) customMap = SLOT_LABELS.map((_, j) => slotRootDefault(j));
+      customMap[i] = parseInt(sel.value, 10);
+      localStorage.setItem("telli-map", JSON.stringify(customMap));
+    });
+    row.appendChild(span);
+    row.appendChild(sel);
+    customRows.appendChild(row);
+  });
+}
+buildCustomRows();
+
+document.getElementById("customBtn").addEventListener("click", () => {
+  customPanel.classList.toggle("hidden");
+});
+document.getElementById("closePanelBtn").addEventListener("click", () => {
+  customPanel.classList.add("hidden");
+});
+document.getElementById("resetMapBtn").addEventListener("click", () => {
+  customMap = null;
+  localStorage.removeItem("telli-map");
+  buildCustomRows();
+});
+keyEl.addEventListener("change", () => {
+  if (!customMap) buildCustomRows();
+});
+
 const langSelects = [...document.querySelectorAll(".langSel")];
 langSelects.forEach(sel => {
   for (const code in LANG_NAMES) {
@@ -92,6 +152,10 @@ function applyI18n() {
   document.getElementById("card-right-body").textContent = t("cardRightBody");
   document.getElementById("card-cam-title").textContent = t("cardCamTitle");
   document.getElementById("card-cam-body").textContent = t("cardCamBody");
+  document.getElementById("customBtn").textContent = t("customize");
+  document.getElementById("customTitle").textContent = t("customTitle");
+  document.getElementById("resetMapBtn").textContent = t("reset");
+  document.getElementById("closePanelBtn").textContent = t("close");
   if (!startBtn.disabled) startBtn.textContent = t("start");
 }
 applyI18n();
@@ -540,7 +604,9 @@ function loop() {
   volBar.style.width = Math.round(clamp(volume, 0, 1) * 100) + "%";
 
   if (degree !== null) {
-    const rootMidi = KEY_BASE + parseInt(keyEl.value, 10) + DEGREE_OFFSETS[degree - 1] - (octDown ? 12 : 0);
+    const rootMidi = KEY_BASE
+      + (customMap ? customMap[degree - 1] : parseInt(keyEl.value, 10) + DEGREE_OFFSETS[degree - 1])
+      - (octDown ? 12 : 0);
     const quality = QUALITIES[qualityIdx];
     const intervals = (minor ? quality.minor : quality.major).slice();
     while (intervals.length < 4) intervals.push(intervals[0] + 12);
@@ -550,7 +616,7 @@ function loop() {
 
     const inst = instEl.value;
     if (inst === "piano" || inst === "guitar" || inst === "electric") {
-      const chordKey = [degree, minor, qualityIdx, octDown, keyEl.value].join("|");
+      const chordKey = [rootMidi, minor, qualityIdx].join("|");
       const retrig = (shake || (R && (R.volY - prevRVol) > 0.08)) && performance.now() - lastTriggerAt > 200;
       if (volume > 0.06 && (chordKey !== lastChordKey || retrig) && performance.now() - lastTriggerAt > 140) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
