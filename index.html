@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#07090d">
+<meta name="description" content="telli — play chords in the air with your hands.">
+<title>telli</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+
+<header class="topbar">
+  <div class="logo">TELL<span>İ</span></div>
+  <div class="controls">
+    <label><span id="lbl-mode"></span>
+      <select id="mode">
+        <option value="gesture" selected></option>
+        <option value="theremin"></option>
+      </select>
+    </label>
+    <label><span id="lbl-key"></span>
+      <select id="key"></select>
+    </label>
+    <label><span id="lbl-inst"></span>
+      <select id="inst">
+        <option value="synth" selected></option>
+        <option value="organ"></option>
+        <option value="piano"></option>
+        <option value="guitar"></option>
+      </select>
+    </label>
+    <label><span id="lbl-left"></span>
+      <select id="leftSetting">
+        <option value="tilt" selected></option>
+        <option value="major"></option>
+        <option value="minor"></option>
+      </select>
+    </label>
+    <label><span id="lbl-right"></span>
+      <select id="rightSetting">
+        <option value="fingers" selected></option>
+        <option value="0"></option>
+        <option value="2"></option>
+      </select>
+    </label>
+    <label><span id="lbl-lang"></span>
+      <select id="lang" class="langSel"></select>
+    </label>
+  </div>
+</header>
+
+<div class="readout">
+  <div class="chord" id="chordText">—</div>
+  <div class="detail" id="detailText"></div>
+  <div class="volwrap"><div class="volbar" id="volBar"></div></div>
+</div>
+
+<div id="start-screen">
+  <div class="start-lang">
+    <select id="lang2" class="langSel"></select>
+  </div>
+  <h1>TELL<span>İ</span></h1>
+  <div class="cards">
+    <div class="card">
+      <h3 id="card-left-title"></h3>
+      <p id="card-left-body"></p>
+    </div>
+    <div class="card">
+      <h3 id="card-right-title"></h3>
+      <p id="card-right-body"></p>
+    </div>
+    <div class="card">
+      <h3 id="card-cam-title"></h3>
+      <p id="card-cam-body"></p>
+    </div>
+  </div>
+  <button id="start-btn"></button>
+  <div class="status" id="status"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

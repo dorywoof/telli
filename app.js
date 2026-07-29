@@ -1,0 +1,427 @@
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm";
+import { I18N, LANG_NAMES, pickLang } from "./i18n.js";
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const chordText = document.getElementById("chordText");
+const detailText = document.getElementById("detailText");
+const volBar = document.getElementById("volBar");
+const modeEl = document.getElementById("mode");
+const keyEl = document.getElementById("key");
+const instEl = document.getElementById("inst");
+const leftSettingEl = document.getElementById("leftSetting");
+const rightSettingEl = document.getElementById("rightSetting");
+const startBtn = document.getElementById("start-btn");
+const startScreen = document.getElementById("start-screen");
+const statusEl = document.getElementById("status");
+
+const TEAL = "#34d9b4";
+const WARM = "#f0a86e";
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const DEGREE_OFFSETS = [0, 2, 4, 5, 7, 9, 11];
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
+const KEY_BASE = 48;
+const QUALITIES = [
+  { major: [0, 4, 7],     minor: [0, 3, 7] },
+  { major: [4, 7, 12],    minor: [3, 7, 12] },
+  { major: [0, 4, 7, 11], minor: [0, 3, 7, 10] },
+  { major: [0, 4, 7, 14], minor: [0, 3, 7, 14] },
+];
+const BONES = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17],
+];
+
+NOTE_NAMES.forEach((n, i) => {
+  const opt = document.createElement("option");
+  opt.value = i;
+  opt.textContent = n;
+  if (i === 0) opt.selected = true;
+  keyEl.appendChild(opt);
+});
+
+let lang = pickLang();
+const t = k => I18N[lang][k] ?? I18N.en[k];
+
+const langSelects = [...document.querySelectorAll(".langSel")];
+langSelects.forEach(sel => {
+  for (const code in LANG_NAMES) {
+    const opt = document.createElement("option");
+    opt.value = code;
+    opt.textContent = LANG_NAMES[code];
+    sel.appendChild(opt);
+  }
+  sel.value = lang;
+  sel.addEventListener("change", () => {
+    lang = sel.value;
+    localStorage.setItem("telli-lang", lang);
+    langSelects.forEach(s => { if (s !== sel) s.value = lang; });
+    applyI18n();
+  });
+});
+
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.getElementById("lbl-mode").textContent = t("mode");
+  document.getElementById("lbl-key").textContent = t("key");
+  document.getElementById("lbl-inst").textContent = t("instrument");
+  document.getElementById("lbl-left").textContent = t("leftHand");
+  document.getElementById("lbl-right").textContent = t("rightHand");
+  document.getElementById("lbl-lang").textContent = t("language");
+  modeEl.options[0].textContent = t("modeGesture");
+  modeEl.options[1].textContent = t("modeTheremin");
+  instEl.options[0].textContent = t("instSynth");
+  instEl.options[1].textContent = t("instOrgan");
+  instEl.options[2].textContent = t("instPiano");
+  instEl.options[3].textContent = t("instGuitar");
+  leftSettingEl.options[0].textContent = t("leftTilt");
+  leftSettingEl.options[1].textContent = t("leftMajor");
+  leftSettingEl.options[2].textContent = t("leftMinor");
+  rightSettingEl.options[0].textContent = t("rightFingers");
+  rightSettingEl.options[1].textContent = t("rightFixedTriad");
+  rightSettingEl.options[2].textContent = t("rightFixedSeventh");
+  document.getElementById("card-left-title").textContent = t("cardLeftTitle");
+  document.getElementById("card-left-body").textContent = t("cardLeftBody");
+  document.getElementById("card-right-title").textContent = t("cardRightTitle");
+  document.getElementById("card-right-body").textContent = t("cardRightBody");
+  document.getElementById("card-cam-title").textContent = t("cardCamTitle");
+  document.getElementById("card-cam-body").textContent = t("cardCamBody");
+  if (!startBtn.disabled) startBtn.textContent = t("start");
+}
+applyI18n();
+
+let landmarker = null;
+let running = false;
+let volume = 0;
+let tone = 0.5;
+let lastChordKey = null;
+let thereminFreq = 220;
+let thereminVol = 0;
+
+const degreeState = { committed: null, cand: null, count: 0 };
+const qualityState = { committed: null, cand: null, count: 0 };
+
+function stabilize(raw, s, dwell = 3) {
+  if (raw === null || raw === undefined) { s.committed = null; s.cand = null; s.count = 0; return null; }
+  if (s.committed === null || raw === s.committed) { s.committed = raw; s.cand = raw; s.count = 0; return s.committed; }
+  if (raw === s.cand) s.count++; else { s.cand = raw; s.count = 1; }
+  if (s.count >= dwell) { s.committed = raw; s.count = 0; }
+  return s.committed;
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+let bus, filter, sustainGain, oscs = [], thereminOsc, thereminGain;
+let guitarPlucks = [], piano;
+
+function initAudio() {
+  const limiter = new Tone.Limiter(-2).toDestination();
+  const reverb = new Tone.Reverb({ decay: 2.4, wet: 0.25 }).connect(limiter);
+  bus = new Tone.Gain(0.9).connect(reverb);
+
+  filter = new Tone.Filter(1800, "lowpass").connect(bus);
+  sustainGain = new Tone.Gain(0).connect(filter);
+  for (let i = 0; i < 4; i++) {
+    const o = new Tone.Oscillator(220, "sawtooth").connect(sustainGain);
+    o.start();
+    oscs.push(o);
+  }
+
+  thereminGain = new Tone.Gain(0).connect(filter);
+  thereminOsc = new Tone.Oscillator(220, "sine").connect(thereminGain);
+  thereminOsc.start();
+
+  for (let i = 0; i < 4; i++) {
+    const gain = new Tone.Gain(1).connect(bus);
+    const synth = new Tone.PluckSynth({ attackNoise: 1, dampening: 4200, resonance: 0.975 }).connect(gain);
+    guitarPlucks.push({ synth, gain });
+  }
+
+  piano = new Tone.Sampler({
+    urls: {
+      "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3", "A2": "A2.mp3",
+      "C3": "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3", "A3": "A3.mp3",
+      "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", "A4": "A4.mp3",
+      "C5": "C5.mp3",
+    },
+    baseUrl: "https://tonejs.github.io/audio/salamander/",
+  }).connect(bus);
+}
+
+function triggerChord(midis, vel) {
+  const inst = instEl.value;
+  const now = Tone.now();
+  midis.forEach((m, k) => {
+    const t = now + k * 0.02;
+    const freq = midiToFreq(m);
+    if (inst === "piano") {
+      if (piano.loaded) piano.triggerAttackRelease(freq, "1n", t, 0.3 + 0.6 * vel);
+    } else {
+      const s = guitarPlucks[k % guitarPlucks.length];
+      s.gain.gain.setValueAtTime(0.3 + 0.7 * vel, t);
+      s.synth.triggerAttack(freq, t);
+    }
+  });
+}
+
+startBtn.addEventListener("click", async () => {
+  startBtn.disabled = true;
+  try {
+    statusEl.textContent = t("statusAudio");
+    await Tone.start();
+    initAudio();
+
+    statusEl.textContent = t("statusModel");
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+    const options = {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        delegate: "GPU",
+      },
+      runningMode: "VIDEO",
+      numHands: 2,
+      minHandDetectionConfidence: 0.5,
+      minHandPresenceConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    };
+    try {
+      landmarker = await HandLandmarker.createFromOptions(vision, options);
+    } catch {
+      options.baseOptions.delegate = "CPU";
+      landmarker = await HandLandmarker.createFromOptions(vision, options);
+    }
+
+    statusEl.textContent = t("statusCamera");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    await video.play();
+
+    startScreen.style.display = "none";
+    running = true;
+    requestAnimationFrame(loop);
+  } catch (err) {
+    statusEl.textContent = t("error") + err.message;
+    startBtn.disabled = false;
+    startBtn.textContent = t("start");
+  }
+});
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+function mapPoint(lm) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const scale = Math.max(canvas.width / vw, canvas.height / vh);
+  const ox = (canvas.width - vw * scale) / 2;
+  const oy = (canvas.height - vh * scale) / 2;
+  return { x: (1 - lm.x) * vw * scale + ox, y: lm.y * vh * scale + oy };
+}
+
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function fingersUp(pts) {
+  const wrist = pts[0];
+  const up = {};
+  const pairs = { index: [8, 6], middle: [12, 10], ring: [16, 14], pinky: [20, 18] };
+  for (const k in pairs) {
+    const [tip, pip] = pairs[k];
+    up[k] = dist(pts[tip], wrist) > dist(pts[pip], wrist) * 1.15;
+  }
+  up.thumb = dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.12;
+  return up;
+}
+
+function handTilt(pts) {
+  const dx = pts[9].x - pts[0].x;
+  const dy = pts[9].y - pts[0].y;
+  return Math.atan2(dx, -dy) * 180 / Math.PI;
+}
+
+function analyzeLeft(pts) {
+  const up = fingersUp(pts);
+  let degree = null;
+  if (up.index && up.pinky && !up.middle && !up.ring) {
+    degree = up.thumb ? 7 : 6;
+  } else {
+    const total = ["thumb", "index", "middle", "ring", "pinky"].filter(k => up[k]).length;
+    if (total > 0) degree = Math.min(total, 5);
+  }
+  const tilt = handTilt(pts);
+  return { degree, tilted: Math.abs(tilt) > 32 };
+}
+
+function analyzeRight(pts) {
+  const up = fingersUp(pts);
+  const nonThumb = ["index", "middle", "ring", "pinky"].filter(k => up[k]).length;
+  const palm = dist(pts[0], pts[9]);
+  const volY = clamp((0.85 - pts[0].y / canvas.height) / 0.6, 0, 1);
+  const tilt = handTilt(pts);
+  return {
+    quality: nonThumb >= 1 ? Math.min(nonThumb, 4) - 1 : null,
+    volY,
+    tonePct: clamp(Math.abs(tilt) / 60, 0, 1),
+    thumbDown: pts[4].y > pts[0].y + palm * 0.25,
+  };
+}
+
+function drawHand(pts, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  for (const [a, b] of BONES) {
+    ctx.moveTo(pts[a].x, pts[a].y);
+    ctx.lineTo(pts[b].x, pts[b].y);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  for (const p of pts) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function setSustainTargets(midis, targetVol) {
+  const inst = instEl.value;
+  const sustained = inst === "synth" || inst === "organ";
+  const wave = inst === "organ" ? "sine" : "sawtooth";
+  oscs.forEach((o, i) => {
+    if (o.type !== wave) o.type = wave;
+    if (midis && midis[i] !== undefined) o.frequency.rampTo(midiToFreq(midis[i]), 0.08);
+  });
+  sustainGain.gain.rampTo(sustained ? targetVol * 0.22 : 0, 0.07);
+}
+
+function loop() {
+  if (!running) return;
+  const now = performance.now();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  let leftPts = null, rightPts = null;
+
+  if (video.videoWidth > 0) {
+    const res = landmarker.detectForVideo(video, now);
+    const hands = (res.landmarks || []).map((lm, i) => ({
+      mapped: lm.map(mapPoint),
+      label: res.handedness?.[i]?.[0]?.categoryName || null,
+    }));
+
+    if (hands.length === 1) {
+      const h = hands[0];
+      if (h.label === "Right") rightPts = h.mapped;
+      else if (h.label === "Left") leftPts = h.mapped;
+      else if (h.mapped[0].x > canvas.width / 2) rightPts = h.mapped;
+      else leftPts = h.mapped;
+    } else if (hands.length >= 2) {
+      const sorted = [hands[0], hands[1]].sort((a, b) => a.mapped[0].x - b.mapped[0].x);
+      leftPts = sorted[0].mapped;
+      rightPts = sorted[1].mapped;
+      const byLabel = { Left: null, Right: null };
+      for (const h of [hands[0], hands[1]]) if (h.label) byLabel[h.label] = h.mapped;
+      if (byLabel.Left && byLabel.Right) {
+        leftPts = byLabel.Left;
+        rightPts = byLabel.Right;
+      }
+    }
+  }
+
+  if (leftPts) drawHand(leftPts, TEAL);
+  if (rightPts) drawHand(rightPts, WARM);
+
+  if (modeEl.value === "theremin") {
+    sustainGain.gain.rampTo(0, 0.1);
+    const keyHz = midiToFreq(KEY_BASE + parseInt(keyEl.value, 10) + 12);
+    const targetFreq = rightPts
+      ? keyHz * Math.pow(2, clamp(1 - rightPts[0].y / canvas.height, 0, 1) * 2)
+      : thereminFreq;
+    const targetVol = leftPts ? Math.pow(clamp(1 - leftPts[0].y / canvas.height, 0, 1), 1.4) * 0.3 : 0;
+    thereminFreq = lerp(thereminFreq, targetFreq, 0.3);
+    thereminVol = lerp(thereminVol, targetVol, 0.25);
+    thereminOsc.frequency.rampTo(thereminFreq, 0.04);
+    thereminGain.gain.rampTo(thereminVol, 0.06);
+    chordText.textContent = thereminVol > 0.01 ? Math.round(thereminFreq) + " Hz" : "—";
+    detailText.textContent = t("theremin");
+    volBar.style.width = Math.round(thereminVol / 0.3 * 100) + "%";
+    lastChordKey = null;
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  thereminGain.gain.rampTo(0, 0.1);
+
+  const L = leftPts ? analyzeLeft(leftPts) : null;
+  const R = rightPts ? analyzeRight(rightPts) : null;
+
+  const degree = stabilize(L ? L.degree : null, degreeState);
+
+  let minor = false;
+  if (leftSettingEl.value === "tilt") minor = L ? L.tilted : false;
+  else minor = leftSettingEl.value === "minor";
+
+  let qualityIdx = 0;
+  if (rightSettingEl.value === "fingers") {
+    qualityIdx = stabilize(R ? R.quality : null, qualityState) ?? 0;
+  } else {
+    qualityIdx = parseInt(rightSettingEl.value, 10);
+  }
+
+  const octDown = R ? R.thumbDown : false;
+  tone = lerp(tone, R ? R.tonePct : 0.5, 0.15);
+  filter.frequency.rampTo(500 + tone * 3200, 0.08);
+
+  const targetVol = degree === null ? 0 : (R ? 0.2 + 0.8 * Math.pow(R.volY, 1.2) : 0.6);
+  volume = lerp(volume, targetVol, 0.25);
+  volBar.style.width = Math.round(clamp(volume, 0, 1) * 100) + "%";
+
+  if (degree !== null) {
+    const rootMidi = KEY_BASE + parseInt(keyEl.value, 10) + DEGREE_OFFSETS[degree - 1] - (octDown ? 12 : 0);
+    const quality = QUALITIES[qualityIdx];
+    const intervals = (minor ? quality.minor : quality.major).slice();
+    while (intervals.length < 4) intervals.push(intervals[0] + 12);
+    const midis = intervals.map(iv => rootMidi + iv);
+
+    setSustainTargets(midis, volume);
+
+    const inst = instEl.value;
+    if (inst === "piano" || inst === "guitar") {
+      const chordKey = [degree, minor, qualityIdx, octDown, keyEl.value].join("|");
+      if (volume > 0.06 && chordKey !== lastChordKey) {
+        triggerChord(midis, clamp(targetVol, 0.2, 1));
+        lastChordKey = chordKey;
+      }
+      if (volume <= 0.06) lastChordKey = null;
+    }
+
+    const rootName = NOTE_NAMES[((rootMidi % 12) + 12) % 12];
+    chordText.textContent = rootName + (minor ? "m" : "") +
+      (qualityIdx === 2 ? "7" : qualityIdx === 3 ? "9" : "");
+    detailText.textContent = ROMAN[degree - 1] + " · " + (minor ? t("minor") : t("major")) + " · " +
+      t("qualities")[qualityIdx].toUpperCase() + (octDown ? " · " + t("octDown") : "");
+  } else {
+    setSustainTargets(null, 0);
+    lastChordKey = null;
+    chordText.textContent = "—";
+    detailText.textContent = leftPts ? "" : t("showLeftHand");
+  }
+
+  requestAnimationFrame(loop);
+}

@@ -1,0 +1,225 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: #07090d;
+  color: #e8edf4;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  filter: brightness(0.5) saturate(0.75);
+}
+
+#canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 24px;
+  background: linear-gradient(to bottom, rgba(7, 9, 13, 0.88), transparent);
+}
+
+.logo {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 5px;
+}
+
+.logo span { color: #34d9b4; }
+
+.controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: #9aa5b5;
+}
+
+.controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.controls select {
+  background: rgba(20, 26, 35, 0.85);
+  color: #e8edf4;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.readout {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.readout .chord {
+  font-size: 64px;
+  font-weight: 200;
+  letter-spacing: 2px;
+  line-height: 1;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6);
+}
+
+.readout .detail {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(232, 237, 244, 0.55);
+  text-transform: uppercase;
+  min-height: 16px;
+}
+
+.volwrap {
+  width: 220px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.volbar {
+  height: 100%;
+  width: 0%;
+  background: #34d9b4;
+  border-radius: 2px;
+  transition: width 80ms linear;
+}
+
+.start-lang {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+}
+
+.start-lang select {
+  background: rgba(20, 26, 35, 0.85);
+  color: #e8edf4;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+#start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: radial-gradient(ellipse at center, #0d1219 0%, #07090d 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+}
+
+#start-screen h1 {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 12px;
+}
+
+#start-screen h1 span { color: #34d9b4; }
+
+.cards {
+  display: flex;
+  gap: 16px;
+  max-width: 860px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.card {
+  flex: 1 1 240px;
+  max-width: 280px;
+  background: rgba(15, 19, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #34d9b4;
+  margin-bottom: 8px;
+}
+
+.card p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #9aa5b5;
+}
+
+#start-btn {
+  padding: 15px 44px;
+  font-size: 16px;
+  font-weight: 700;
+  background: #34d9b4;
+  color: #06251d;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 40px rgba(52, 217, 180, 0.25);
+}
+
+#start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 60px rgba(52, 217, 180, 0.4);
+}
+
+#start-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  transform: none;
+}
+
+.status {
+  color: #5b6675;
+  font-size: 13px;
+  min-height: 18px;
+}
+
+@media (max-width: 900px) {
+  .topbar { padding: 10px 14px; gap: 12px; }
+  .controls { gap: 8px; font-size: 12px; }
+  .readout .chord { font-size: 44px; }
+  #start-screen h1 { font-size: 36px; letter-spacing: 6px; }
+}
