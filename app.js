@@ -176,7 +176,9 @@ const qualityState = { committed: null, cand: null, count: 0 };
 const lmSmooth = { left: null, right: null };
 const roles = { left: null, right: null };
 const rMotion = { x: 0, y: 0, palm: 0, t: 0 };
-let shakeArmed = true;
+let shakeArmed = false;
+let rSeenSince = 0;
+let calmSince = 0;
 
 function smoothLandmarks(key, pts) {
   const prev = lmSmooth[key];
@@ -539,16 +541,21 @@ function loop() {
   if (rightPts) {
     const p = rightPts[0];
     const palm = dist(rightPts[0], rightPts[9]);
+    if (!rMotion.t) rSeenSince = now;
     if (rMotion.t && now - rMotion.t < 200) {
       const dt = Math.max(0.016, (now - rMotion.t) / 1000);
       const move = Math.hypot(p.x - rMotion.x, p.y - rMotion.y) / canvas.height / dt;
       const zoom = Math.abs(palm - rMotion.palm) / Math.max(palm, 1) / dt;
       const speedy = move > 0.4 || zoom > 0.22;
-      if (speedy && shakeArmed) {
-        shake = true;
-        shakeArmed = false;
+      if (speedy) {
+        calmSince = 0;
+        if (shakeArmed && now - rSeenSince > 400) {
+          shake = true;
+          shakeArmed = false;
+        }
       } else if (move < 0.15 && zoom < 0.1) {
-        shakeArmed = true;
+        if (!calmSince) calmSince = now;
+        if (now - calmSince > 120) shakeArmed = true;
       }
     }
     rMotion.x = p.x;
@@ -557,7 +564,8 @@ function loop() {
     rMotion.t = now;
   } else {
     rMotion.t = 0;
-    shakeArmed = true;
+    shakeArmed = false;
+    calmSince = 0;
   }
 
   leftPts = leftPts ? smoothLandmarks("left", leftPts) : (lmSmooth.left = null);
