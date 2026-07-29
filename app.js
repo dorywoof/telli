@@ -183,8 +183,8 @@ function smoothLandmarks(key, pts) {
     return lmSmooth[key];
   }
   for (let i = 0; i < pts.length; i++) {
-    prev[i].x += (pts[i].x - prev[i].x) * 0.45;
-    prev[i].y += (pts[i].y - prev[i].y) * 0.45;
+    prev[i].x += (pts[i].x - prev[i].x) * 0.55;
+    prev[i].y += (pts[i].y - prev[i].y) * 0.55;
   }
   return prev;
 }
@@ -576,7 +576,7 @@ function loop() {
   const L = leftPts ? analyzeLeft(leftPts) : null;
   const R = rightPts ? analyzeRight(rightPts) : null;
 
-  const degree = stabilize(L ? L.degree : null, degreeState, 300);
+  const degree = stabilize(L ? L.degree : null, degreeState, 140);
 
   let minor = false;
   if (leftSettingEl.value === "tilt") minor = L ? L.tilted : false;
@@ -584,7 +584,7 @@ function loop() {
 
   let qualityIdx = 0;
   if (rightSettingEl.value === "fingers") {
-    qualityIdx = stabilize(R ? R.quality : null, qualityState, 250) ?? 0;
+    qualityIdx = stabilize(R ? R.quality : null, qualityState, 120) ?? 0;
   } else {
     qualityIdx = parseInt(rightSettingEl.value, 10);
   }
