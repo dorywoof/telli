@@ -168,7 +168,6 @@ let lastChordKey = null;
 let thereminFreq = 220;
 let thereminVol = 0;
 let tiltMinor = false;
-let prevRVol = 0;
 let lastTriggerAt = 0;
 
 const degreeState = { committed: null, cand: null, count: 0 };
@@ -176,6 +175,7 @@ const qualityState = { committed: null, cand: null, count: 0 };
 const lmSmooth = { left: null, right: null };
 const roles = { left: null, right: null };
 const rMotion = { x: 0, y: 0, palm: 0, t: 0 };
+let shakeArmed = true;
 
 function smoothLandmarks(key, pts) {
   const prev = lmSmooth[key];
@@ -542,7 +542,13 @@ function loop() {
       const dt = Math.max(0.016, (now - rMotion.t) / 1000);
       const move = Math.hypot(p.x - rMotion.x, p.y - rMotion.y) / canvas.height / dt;
       const zoom = Math.abs(palm - rMotion.palm) / Math.max(palm, 1) / dt;
-      shake = move > 0.4 || zoom > 0.22;
+      const speedy = move > 0.4 || zoom > 0.22;
+      if (speedy && shakeArmed) {
+        shake = true;
+        shakeArmed = false;
+      } else if (move < 0.15 && zoom < 0.1) {
+        shakeArmed = true;
+      }
     }
     rMotion.x = p.x;
     rMotion.y = p.y;
@@ -550,6 +556,7 @@ function loop() {
     rMotion.t = now;
   } else {
     rMotion.t = 0;
+    shakeArmed = true;
   }
 
   leftPts = leftPts ? smoothLandmarks("left", leftPts) : (lmSmooth.left = null);
@@ -617,7 +624,7 @@ function loop() {
     const inst = instEl.value;
     if (inst === "piano" || inst === "guitar" || inst === "electric") {
       const chordKey = [rootMidi, minor, qualityIdx].join("|");
-      const retrig = (shake || (R && (R.volY - prevRVol) > 0.08)) && performance.now() - lastTriggerAt > 200;
+      const retrig = shake && performance.now() - lastTriggerAt > 250;
       if (volume > 0.06 && (chordKey !== lastChordKey || retrig) && performance.now() - lastTriggerAt > 140) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
         lastChordKey = chordKey;
@@ -644,7 +651,5 @@ function loop() {
   if (rightPts) {
     drawHandLabel(rightPts, t("qualities")[qualityIdx] + " · " + Math.round(clamp(volume, 0, 1) * 100) + "%", WARM);
   }
-  prevRVol = R ? R.volY : 0;
-
   requestAnimationFrame(loop);
 }
