@@ -103,9 +103,26 @@ let tone = 0.5;
 let lastChordKey = null;
 let thereminFreq = 220;
 let thereminVol = 0;
+let tiltMinor = false;
+let prevRVol = 0;
+let lastTriggerAt = 0;
 
 const degreeState = { committed: null, cand: null, count: 0 };
 const qualityState = { committed: null, cand: null, count: 0 };
+const lmSmooth = { left: null, right: null };
+
+function smoothLandmarks(key, pts) {
+  const prev = lmSmooth[key];
+  if (!prev || prev.length !== pts.length) {
+    lmSmooth[key] = pts.map(p => ({ ...p }));
+    return lmSmooth[key];
+  }
+  for (let i = 0; i < pts.length; i++) {
+    prev[i].x += (pts[i].x - prev[i].x) * 0.5;
+    prev[i].y += (pts[i].y - prev[i].y) * 0.5;
+  }
+  return prev;
+}
 
 function stabilize(raw, s, dwell = 3) {
   if (raw === null || raw === undefined) { s.committed = null; s.cand = null; s.count = 0; return null; }
@@ -120,17 +137,20 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
 let bus, filter, sustainGain, oscs = [], thereminOsc, thereminGain;
-let guitarPlucks = [], electricPlucks = [], piano;
+let guitarPlucks = [], electricPlucks = [], piano, guitarSampler, electricSampler;
 
 function initAudio() {
   const limiter = new Tone.Limiter(-2).toDestination();
   const reverb = new Tone.Reverb({ decay: 2.4, wet: 0.25 }).connect(limiter);
   bus = new Tone.Gain(0.9).connect(reverb);
 
-  filter = new Tone.Filter(1800, "lowpass").connect(bus);
+  const shimmer = new Tone.Chorus({ frequency: 0.6, delayTime: 3.5, depth: 0.5, wet: 0.3 }).connect(bus);
+  shimmer.start();
+  filter = new Tone.Filter(1800, "lowpass").connect(shimmer);
   sustainGain = new Tone.Gain(0).connect(filter);
   for (let i = 0; i < 4; i++) {
     const o = new Tone.Oscillator(220, "sawtooth").connect(sustainGain);
+    o.detune.value = i % 2 === 0 ? -5 : 5;
     o.start();
     oscs.push(o);
   }
@@ -154,6 +174,28 @@ function initAudio() {
     electricPlucks.push({ synth, gain });
   }
 
+  guitarSampler = new Tone.Sampler({
+    urls: {
+      "E2": "E2.mp3", "G2": "G2.mp3", "A2": "A2.mp3", "C3": "C3.mp3",
+      "D#3": "Ds3.mp3", "F#3": "Fs3.mp3", "A3": "A3.mp3", "C4": "C4.mp3",
+      "E4": "E4.mp3", "G4": "G4.mp3", "C5": "C5.mp3",
+    },
+    baseUrl: "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-acoustic/",
+  }).connect(bus);
+
+  const ampComp = new Tone.Compressor(-20, 3).connect(bus);
+  const cabLow = new Tone.Filter(4500, "lowpass").connect(ampComp);
+  const cabHigh = new Tone.Filter(90, "highpass").connect(cabLow);
+  const drive = new Tone.Distortion({ distortion: 0.3, oversample: "2x" }).connect(cabHigh);
+  electricSampler = new Tone.Sampler({
+    urls: {
+      "E2": "E2.mp3", "F#2": "Fs2.mp3", "A2": "A2.mp3", "C3": "C3.mp3",
+      "D#3": "Ds3.mp3", "F#3": "Fs3.mp3", "A3": "A3.mp3", "C4": "C4.mp3",
+      "A4": "A4.mp3", "C5": "C5.mp3",
+    },
+    baseUrl: "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-electric/",
+  }).connect(drive);
+
   piano = new Tone.Sampler({
     urls: {
       "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3", "A2": "A2.mp3",
@@ -168,11 +210,18 @@ function initAudio() {
 function triggerChord(midis, vel) {
   const inst = instEl.value;
   const now = Tone.now();
-  midis.forEach((m, k) => {
-    const t = now + k * 0.02;
+  const notes = (inst === "guitar" || inst === "electric") ? [midis[0] - 12, ...midis] : midis;
+  notes.forEach((m, k) => {
+    const t = now + k * 0.018 + Math.random() * 0.006;
+    const v = Math.min(1, (0.3 + 0.6 * vel) * (0.85 + Math.random() * 0.3));
     const freq = midiToFreq(m);
     if (inst === "piano") {
-      if (piano.loaded) piano.triggerAttackRelease(freq, "1n", t, 0.3 + 0.6 * vel);
+      if (piano.loaded) piano.triggerAttackRelease(freq, "1n", t, v);
+      return;
+    }
+    const sampler = inst === "electric" ? electricSampler : guitarSampler;
+    if (sampler && sampler.loaded) {
+      sampler.triggerAttackRelease(freq, "1n", t, v);
     } else {
       const set = inst === "electric" ? electricPlucks : guitarPlucks;
       const s = set[k % set.length];
@@ -247,16 +296,22 @@ function mapPoint(lm) {
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
+function fingerExtended(pts, mcp, pip, tip) {
+  const v1x = pts[mcp].x - pts[pip].x, v1y = pts[mcp].y - pts[pip].y;
+  const v2x = pts[tip].x - pts[pip].x, v2y = pts[tip].y - pts[pip].y;
+  const cos = (v1x * v2x + v1y * v2y) /
+    (Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y) + 1e-6);
+  return cos < -0.45;
+}
+
 function fingersUp(pts) {
-  const wrist = pts[0];
-  const up = {};
-  const pairs = { index: [8, 6], middle: [12, 10], ring: [16, 14], pinky: [20, 18] };
-  for (const k in pairs) {
-    const [tip, pip] = pairs[k];
-    up[k] = dist(pts[tip], wrist) > dist(pts[pip], wrist) * 1.15;
-  }
-  up.thumb = dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.12;
-  return up;
+  return {
+    index: fingerExtended(pts, 5, 6, 8),
+    middle: fingerExtended(pts, 9, 10, 12),
+    ring: fingerExtended(pts, 13, 14, 16),
+    pinky: fingerExtended(pts, 17, 18, 20),
+    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.15,
+  };
 }
 
 function handTilt(pts) {
@@ -274,8 +329,13 @@ function analyzeLeft(pts) {
     const total = ["thumb", "index", "middle", "ring", "pinky"].filter(k => up[k]).length;
     if (total > 0) degree = Math.min(total, 5);
   }
-  const tilt = handTilt(pts);
-  return { degree, tilted: Math.abs(tilt) > 32 };
+  const tilt = Math.abs(handTilt(pts));
+  if (tiltMinor) {
+    if (tilt < 24) tiltMinor = false;
+  } else {
+    if (tilt > 34) tiltMinor = true;
+  }
+  return { degree, tilted: tiltMinor };
 }
 
 function analyzeRight(pts) {
@@ -290,6 +350,14 @@ function analyzeRight(pts) {
     tonePct: clamp(Math.abs(tilt) / 60, 0, 1),
     thumbDown: pts[4].y > pts[0].y + palm * 0.25,
   };
+}
+
+function drawHandLabel(pts, text, color) {
+  ctx.fillStyle = color;
+  ctx.font = '600 14px "Segoe UI", sans-serif';
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, pts[0].x + 20, pts[0].y + 4);
 }
 
 function drawHand(pts, color) {
@@ -355,6 +423,9 @@ function loop() {
     }
   }
 
+  leftPts = leftPts ? smoothLandmarks("left", leftPts) : (lmSmooth.left = null);
+  rightPts = rightPts ? smoothLandmarks("right", rightPts) : (lmSmooth.right = null);
+
   if (leftPts) drawHand(leftPts, TEAL);
   if (rightPts) drawHand(rightPts, WARM);
 
@@ -415,9 +486,11 @@ function loop() {
     const inst = instEl.value;
     if (inst === "piano" || inst === "guitar" || inst === "electric") {
       const chordKey = [degree, minor, qualityIdx, octDown, keyEl.value].join("|");
-      if (volume > 0.06 && chordKey !== lastChordKey) {
+      const bounced = R && (R.volY - prevRVol) > 0.08 && performance.now() - lastTriggerAt > 260;
+      if (volume > 0.06 && (chordKey !== lastChordKey || bounced)) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
         lastChordKey = chordKey;
+        lastTriggerAt = performance.now();
       }
       if (volume <= 0.06) lastChordKey = null;
     }
@@ -433,6 +506,14 @@ function loop() {
     chordText.textContent = "—";
     detailText.textContent = leftPts ? "" : t("showLeftHand");
   }
+
+  if (leftPts && degree !== null) {
+    drawHandLabel(leftPts, ROMAN[degree - 1] + " · " + (minor ? t("minor") : t("major")), TEAL);
+  }
+  if (rightPts) {
+    drawHandLabel(rightPts, t("qualities")[qualityIdx] + " · " + Math.round(clamp(volume, 0, 1) * 100) + "%", WARM);
+  }
+  prevRVol = R ? R.volY : 0;
 
   requestAnimationFrame(loop);
 }
