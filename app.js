@@ -412,7 +412,7 @@ function fingerExtended(pts, mcp, pip, tip, wasUp) {
   const cos = (v1x * v2x + v1y * v2y) /
     (Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y) + 1e-6);
   const distOk = dist(pts[tip], pts[0]) > dist(pts[pip], pts[0]);
-  return (cos < (wasUp ? -0.35 : -0.6)) && distOk;
+  return (cos < (wasUp ? -0.45 : -0.6)) && distOk;
 }
 
 function fingersUp(pts, key) {
@@ -576,7 +576,7 @@ function loop() {
   const L = leftPts ? analyzeLeft(leftPts) : null;
   const R = rightPts ? analyzeRight(rightPts) : null;
 
-  const degree = stabilize(L ? L.degree : null, degreeState, 70);
+  const degree = stabilize(L ? L.degree : null, degreeState, 100);
 
   let minor = false;
   if (leftSettingEl.value === "tilt") minor = L ? L.tilted : false;
@@ -584,7 +584,7 @@ function loop() {
 
   let qualityIdx = 0;
   if (rightSettingEl.value === "fingers") {
-    qualityIdx = stabilize(R ? R.quality : null, qualityState, 70) ?? 0;
+    qualityIdx = stabilize(R ? R.quality : null, qualityState, 100) ?? 0;
   } else {
     qualityIdx = parseInt(rightSettingEl.value, 10);
   }
