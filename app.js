@@ -191,7 +191,7 @@ function smoothLandmarks(key, pts) {
 
 function stabilize(raw, s, dwell = 3) {
   if (raw === null || raw === undefined) { s.committed = null; s.cand = null; s.count = 0; return null; }
-  if (s.committed === null || raw === s.committed) { s.committed = raw; s.cand = raw; s.count = 0; return s.committed; }
+  if (raw === s.committed) { s.cand = raw; s.count = 0; return s.committed; }
   if (raw === s.cand) s.count++; else { s.cand = raw; s.count = 1; }
   if (s.count >= dwell) { s.committed = raw; s.count = 0; }
   return s.committed;
