@@ -175,10 +175,6 @@ const degreeState = { committed: null, cand: null, count: 0 };
 const qualityState = { committed: null, cand: null, count: 0 };
 const lmSmooth = { left: null, right: null };
 const roles = { left: null, right: null };
-const rMotion = { x: 0, y: 0, palm: 0, t: 0 };
-let shakeArmed = false;
-let rSeenSince = 0;
-let calmSince = 0;
 
 function smoothLandmarks(key, pts) {
   const prev = lmSmooth[key];
@@ -537,37 +533,6 @@ function loop() {
     if (rightPts) roles.right = { x: rightPts[0].x, y: rightPts[0].y, seenAt: now };
   }
 
-  let shake = false;
-  if (rightPts) {
-    const p = rightPts[0];
-    const palm = dist(rightPts[0], rightPts[9]);
-    if (!rMotion.t) rSeenSince = now;
-    if (rMotion.t && now - rMotion.t < 200) {
-      const dt = Math.max(0.016, (now - rMotion.t) / 1000);
-      const move = Math.hypot(p.x - rMotion.x, p.y - rMotion.y) / canvas.height / dt;
-      const zoom = Math.abs(palm - rMotion.palm) / Math.max(palm, 1) / dt;
-      const speedy = move > 0.4 || zoom > 0.22;
-      if (speedy) {
-        calmSince = 0;
-        if (shakeArmed && now - rSeenSince > 400) {
-          shake = true;
-          shakeArmed = false;
-        }
-      } else if (move < 0.15 && zoom < 0.1) {
-        if (!calmSince) calmSince = now;
-        if (now - calmSince > 120) shakeArmed = true;
-      }
-    }
-    rMotion.x = p.x;
-    rMotion.y = p.y;
-    rMotion.palm = palm;
-    rMotion.t = now;
-  } else {
-    rMotion.t = 0;
-    shakeArmed = false;
-    calmSince = 0;
-  }
-
   leftPts = leftPts ? smoothLandmarks("left", leftPts) : (lmSmooth.left = null);
   rightPts = rightPts ? smoothLandmarks("right", rightPts) : (lmSmooth.right = null);
 
@@ -633,8 +598,7 @@ function loop() {
     const inst = instEl.value;
     if (inst === "piano" || inst === "guitar" || inst === "electric") {
       const chordKey = [rootMidi, minor, qualityIdx].join("|");
-      const retrig = shake && performance.now() - lastTriggerAt > 250;
-      if (volume > 0.06 && (chordKey !== lastChordKey || retrig) && performance.now() - lastTriggerAt > 140) {
+      if (volume > 0.06 && chordKey !== lastChordKey && performance.now() - lastTriggerAt > 140) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
         lastChordKey = chordKey;
         lastTriggerAt = performance.now();
