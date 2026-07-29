@@ -120,8 +120,8 @@ function smoothLandmarks(key, pts) {
     return lmSmooth[key];
   }
   for (let i = 0; i < pts.length; i++) {
-    prev[i].x += (pts[i].x - prev[i].x) * 0.5;
-    prev[i].y += (pts[i].y - prev[i].y) * 0.5;
+    prev[i].x += (pts[i].x - prev[i].x) * 0.65;
+    prev[i].y += (pts[i].y - prev[i].y) * 0.65;
   }
   return prev;
 }
@@ -349,7 +349,8 @@ function fingersUp(pts) {
     middle: fingerExtended(pts, 9, 10, 12),
     ring: fingerExtended(pts, 13, 14, 16),
     pinky: fingerExtended(pts, 17, 18, 20),
-    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.25,
+    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.18 ||
+      dist(pts[4], pts[5]) > dist(pts[0], pts[9]) * 0.55,
   };
 }
 
@@ -365,8 +366,8 @@ function analyzeLeft(pts) {
   if (up.index && up.pinky && !up.middle && !up.ring) {
     degree = up.thumb ? 7 : 6;
   } else {
-    const nonThumb = ["index", "middle", "ring", "pinky"].filter(k => up[k]).length;
-    if (nonThumb > 0) degree = nonThumb === 4 && up.thumb ? 5 : Math.min(nonThumb, 4);
+    const total = ["thumb", "index", "middle", "ring", "pinky"].filter(k => up[k]).length;
+    if (total > 0) degree = Math.min(total, 5);
   }
   const tilt = Math.abs(handTilt(pts));
   if (tiltMinor) {
@@ -451,7 +452,7 @@ function loop() {
       const dr = roles.right && now - roles.right.seenAt < 700
         ? Math.hypot(p.x - roles.right.x, p.y - roles.right.y) : Infinity;
       if (dl === Infinity && dr === Infinity) {
-        if (p.x < canvas.width / 2) leftPts = hands[0]; else rightPts = hands[0];
+        if (p.x > canvas.width * 0.68) rightPts = hands[0]; else leftPts = hands[0];
       } else if (dl <= dr) {
         leftPts = hands[0];
       } else {
@@ -461,6 +462,24 @@ function loop() {
 
     if (leftPts) roles.left = { x: leftPts[0].x, y: leftPts[0].y, seenAt: now };
     if (rightPts) roles.right = { x: rightPts[0].x, y: rightPts[0].y, seenAt: now };
+  }
+
+  let shake = false;
+  if (rightPts) {
+    const p = rightPts[0];
+    const palm = dist(rightPts[0], rightPts[9]);
+    if (rMotion.t && now - rMotion.t < 200) {
+      const dt = Math.max(0.016, (now - rMotion.t) / 1000);
+      const move = Math.hypot(p.x - rMotion.x, p.y - rMotion.y) / canvas.height / dt;
+      const zoom = Math.abs(palm - rMotion.palm) / Math.max(palm, 1) / dt;
+      shake = move > 0.5 || zoom > 0.35;
+    }
+    rMotion.x = p.x;
+    rMotion.y = p.y;
+    rMotion.palm = palm;
+    rMotion.t = now;
+  } else {
+    rMotion.t = 0;
   }
 
   leftPts = leftPts ? smoothLandmarks("left", leftPts) : (lmSmooth.left = null);
@@ -492,25 +511,6 @@ function loop() {
 
   const L = leftPts ? analyzeLeft(leftPts) : null;
   const R = rightPts ? analyzeRight(rightPts) : null;
-
-  let shake = false;
-  if (rightPts) {
-    const p = rightPts[0];
-    const palm = dist(rightPts[0], rightPts[9]);
-    const tNow = performance.now();
-    if (rMotion.t && tNow - rMotion.t < 200) {
-      const dt = Math.max(0.016, (tNow - rMotion.t) / 1000);
-      const move = Math.hypot(p.x - rMotion.x, p.y - rMotion.y) / canvas.height / dt;
-      const zoom = Math.abs(palm - rMotion.palm) / Math.max(palm, 1) / dt;
-      shake = move > 0.8 || zoom > 0.6;
-    }
-    rMotion.x = p.x;
-    rMotion.y = p.y;
-    rMotion.palm = palm;
-    rMotion.t = tNow;
-  } else {
-    rMotion.t = 0;
-  }
 
   const degree = stabilize(L ? L.degree : null, degreeState, 5);
 
@@ -545,7 +545,7 @@ function loop() {
     const inst = instEl.value;
     if (inst === "piano" || inst === "guitar" || inst === "electric") {
       const chordKey = [degree, minor, qualityIdx, octDown, keyEl.value].join("|");
-      const retrig = (shake || (R && (R.volY - prevRVol) > 0.08)) && performance.now() - lastTriggerAt > 300;
+      const retrig = (shake || (R && (R.volY - prevRVol) > 0.08)) && performance.now() - lastTriggerAt > 200;
       if (volume > 0.06 && (chordKey !== lastChordKey || retrig) && performance.now() - lastTriggerAt > 140) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
         lastChordKey = chordKey;
