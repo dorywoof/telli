@@ -152,7 +152,8 @@ function applyI18n() {
   document.getElementById("card-right-body").textContent = t("cardRightBody");
   document.getElementById("card-cam-title").textContent = t("cardCamTitle");
   document.getElementById("card-cam-body").textContent = t("cardCamBody");
-  document.getElementById("customBtn").textContent = t("customize");
+  document.getElementById("customBtn").title = t("customize");
+  document.getElementById("customBtn").setAttribute("aria-label", t("customize"));
   document.getElementById("customTitle").textContent = t("customTitle");
   document.getElementById("resetMapBtn").textContent = t("reset");
   document.getElementById("closePanelBtn").textContent = t("close");
