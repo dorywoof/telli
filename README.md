@@ -1,32 +1,56 @@
 # telli
 
-Play chords in the air. telli turns your webcam into an instrument: your left hand picks notes, your right hand shapes the sound.
+Air guitar, except it actually makes sound.
 
-**Live demo:** open `index.html` through any static server and allow camera access.
+telli turns your webcam into an instrument. Your left hand picks the notes, your right hand does everything else. No MIDI controller, no install, no account. Open the page, show it your hands, play.
 
-## How it works
+*"telli" is Turkish for "stringed" — as in stringed instrument. Except there are no strings. You get the idea.*
 
-- **Left hand — notes.** Raise fingers to pick a scale degree: 1 finger = I, 5 fingers = V. Index + pinky = VI, add the thumb for VII. Tilt your hand to flip major and minor.
-- **Right hand — expression.** Hand height controls volume, 1-4 fingers pick the chord style (triad, first inversion, 7th, 9th), tilting sweeps the filter, thumb pointing down drops an octave.
-- **Theremin mode.** Right hand height sets pitch, left hand height sets volume.
+## The left hand
 
-Four instruments: synth, organ, piano and guitar. Twelve keys. Nine interface languages with automatic detection.
+Count fingers to pick a note:
 
-All processing happens in the browser. Video never leaves the device.
+- 1 finger is the first degree of the scale, 5 fingers is the fifth
+- index + pinky (yes, the rock sign) gets you the sixth
+- throw in the thumb for the seventh
+- tilt your hand sideways and the chord goes minor. Tilt back, major again.
 
-## Running locally
+Close your fist and everything goes quiet. That's the whole interface.
+
+## The right hand
+
+This is where it gets fun:
+
+- raise or lower your hand to control volume
+- hold up 1 to 4 fingers to change the chord flavor: plain triad, first inversion, 7th, 9th
+- tilt to sweep the filter from dark to bright
+- point your thumb down to drop an octave
+
+## Theremin mode
+
+Switch modes in the top bar and wave your hands like a 1920s sci-fi soundtrack. Right hand is pitch, left hand is volume.
+
+## Sounds
+
+Five instruments: synth, organ, piano (real sampled piano), guitar, and electric guitar with a crunchy chorus-drenched tone. Twelve keys to play in. The interface speaks nine languages and picks yours automatically.
+
+## Privacy
+
+Your camera feed never leaves your machine. Hand tracking runs entirely in the browser, there is no server, nothing is uploaded anywhere. Check the network tab if you don't believe me.
+
+## Run it
 
 ```
 python -m http.server 8756
 ```
 
-Then open http://localhost:8756. Chrome or Edge on desktop works best; stand about an arm's length from the camera in good lighting.
+Open http://localhost:8756, allow the camera, stand about an arm's length back. Good lighting helps a lot. Chrome or Edge on desktop works best.
 
-## Stack
+## Built with
 
-- [MediaPipe Hand Landmarker](https://developers.google.com/mediapipe) for hand tracking
-- [Tone.js](https://tonejs.github.io/) for synthesis and sampling
-- Plain HTML, CSS and JavaScript — no build step
+- [MediaPipe Hand Landmarker](https://developers.google.com/mediapipe) for the hand tracking
+- [Tone.js](https://tonejs.github.io/) for every sound you hear
+- vanilla HTML, CSS and JS. No framework, no build step, nothing to compile.
 
 ## License
 
