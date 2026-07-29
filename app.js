@@ -111,6 +111,7 @@ const degreeState = { committed: null, cand: null, count: 0 };
 const qualityState = { committed: null, cand: null, count: 0 };
 const lmSmooth = { left: null, right: null };
 const roles = { left: null, right: null };
+const rMotion = { x: 0, y: 0, palm: 0, t: 0 };
 
 function smoothLandmarks(key, pts) {
   const prev = lmSmooth[key];
@@ -339,7 +340,7 @@ function fingerExtended(pts, mcp, pip, tip) {
   const v2x = pts[tip].x - pts[pip].x, v2y = pts[tip].y - pts[pip].y;
   const cos = (v1x * v2x + v1y * v2y) /
     (Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y) + 1e-6);
-  return cos < -0.45;
+  return cos < -0.55 && dist(pts[tip], pts[0]) > dist(pts[pip], pts[0]);
 }
 
 function fingersUp(pts) {
@@ -348,7 +349,7 @@ function fingersUp(pts) {
     middle: fingerExtended(pts, 9, 10, 12),
     ring: fingerExtended(pts, 13, 14, 16),
     pinky: fingerExtended(pts, 17, 18, 20),
-    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.15,
+    thumb: dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * 1.25,
   };
 }
 
@@ -364,8 +365,8 @@ function analyzeLeft(pts) {
   if (up.index && up.pinky && !up.middle && !up.ring) {
     degree = up.thumb ? 7 : 6;
   } else {
-    const total = ["thumb", "index", "middle", "ring", "pinky"].filter(k => up[k]).length;
-    if (total > 0) degree = Math.min(total, 5);
+    const nonThumb = ["index", "middle", "ring", "pinky"].filter(k => up[k]).length;
+    if (nonThumb > 0) degree = nonThumb === 4 && up.thumb ? 5 : Math.min(nonThumb, 4);
   }
   const tilt = Math.abs(handTilt(pts));
   if (tiltMinor) {
@@ -492,6 +493,25 @@ function loop() {
   const L = leftPts ? analyzeLeft(leftPts) : null;
   const R = rightPts ? analyzeRight(rightPts) : null;
 
+  let shake = false;
+  if (rightPts) {
+    const p = rightPts[0];
+    const palm = dist(rightPts[0], rightPts[9]);
+    const tNow = performance.now();
+    if (rMotion.t && tNow - rMotion.t < 200) {
+      const dt = Math.max(0.016, (tNow - rMotion.t) / 1000);
+      const move = Math.hypot(p.x - rMotion.x, p.y - rMotion.y) / canvas.height / dt;
+      const zoom = Math.abs(palm - rMotion.palm) / Math.max(palm, 1) / dt;
+      shake = move > 0.8 || zoom > 0.6;
+    }
+    rMotion.x = p.x;
+    rMotion.y = p.y;
+    rMotion.palm = palm;
+    rMotion.t = tNow;
+  } else {
+    rMotion.t = 0;
+  }
+
   const degree = stabilize(L ? L.degree : null, degreeState, 5);
 
   let minor = false;
@@ -525,8 +545,8 @@ function loop() {
     const inst = instEl.value;
     if (inst === "piano" || inst === "guitar" || inst === "electric") {
       const chordKey = [degree, minor, qualityIdx, octDown, keyEl.value].join("|");
-      const bounced = R && (R.volY - prevRVol) > 0.08 && performance.now() - lastTriggerAt > 260;
-      if (volume > 0.06 && (chordKey !== lastChordKey || bounced) && performance.now() - lastTriggerAt > 140) {
+      const retrig = (shake || (R && (R.volY - prevRVol) > 0.08)) && performance.now() - lastTriggerAt > 300;
+      if (volume > 0.06 && (chordKey !== lastChordKey || retrig) && performance.now() - lastTriggerAt > 140) {
         triggerChord(midis, clamp(targetVol, 0.2, 1));
         lastChordKey = chordKey;
         lastTriggerAt = performance.now();
