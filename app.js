@@ -427,12 +427,14 @@ function fingersUp(pts, key) {
     st[k] = up[k];
   }
   const palm = dist(pts[0], pts[9]);
-  const abduct = dist(pts[4], pts[9]) > palm * (st.thumb ? 1.0 : 1.18) &&
-    dist(pts[4], pts[5]) > palm * (st.thumb ? 0.5 : 0.62);
+  const otherUp = (up.index ? 1 : 0) + (up.middle ? 1 : 0) + (up.ring ? 1 : 0) + (up.pinky ? 1 : 0);
+  const strict = otherUp >= 3;
+  const abduct = dist(pts[4], pts[9]) > palm * (st.thumb ? (strict ? 1.05 : 0.82) : (strict ? 1.2 : 0.98)) &&
+    dist(pts[4], pts[5]) > palm * (st.thumb ? (strict ? 0.55 : 0.4) : (strict ? 0.65 : 0.5));
   const t1x = pts[2].x - pts[3].x, t1y = pts[2].y - pts[3].y;
   const t2x = pts[4].x - pts[3].x, t2y = pts[4].y - pts[3].y;
   const thumbCos = (t1x * t2x + t1y * t2y) / (Math.hypot(t1x, t1y) * Math.hypot(t2x, t2y) + 1e-6);
-  const straight = thumbCos < (st.thumb ? -0.45 : -0.68);
+  const straight = thumbCos < (st.thumb ? -0.4 : (strict ? -0.7 : -0.55));
   up.thumb = abduct && straight;
   st.thumb = up.thumb;
   return up;
