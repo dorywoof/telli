@@ -428,14 +428,10 @@ function fingersUp(pts, key) {
   }
   const palm = dist(pts[0], pts[9]);
   const otherUp = (up.index ? 1 : 0) + (up.middle ? 1 : 0) + (up.ring ? 1 : 0) + (up.pinky ? 1 : 0);
-  const t1x = pts[2].x - pts[3].x, t1y = pts[2].y - pts[3].y;
-  const t2x = pts[4].x - pts[3].x, t2y = pts[4].y - pts[3].y;
-  const thumbCos = (t1x * t2x + t1y * t2y) / (Math.hypot(t1x, t1y) * Math.hypot(t2x, t2y) + 1e-6);
   let rawThumb;
   if (otherUp >= 3) {
-    rawThumb = dist(pts[4], pts[9]) > palm * (st.thumb ? 1.05 : 1.2) &&
-      dist(pts[4], pts[5]) > palm * (st.thumb ? 0.55 : 0.66) &&
-      thumbCos < (st.thumb ? -0.5 : -0.62);
+    rawThumb = dist(pts[4], pts[9]) > palm * (st.thumb ? 0.95 : 1.08) &&
+      dist(pts[4], pts[5]) > palm * (st.thumb ? 0.5 : 0.62);
   } else {
     rawThumb = dist(pts[4], pts[17]) > dist(pts[3], pts[17]) * (st.thumb ? 1.05 : 1.14) ||
       dist(pts[4], pts[5]) > palm * (st.thumb ? 0.4 : 0.52) ||
