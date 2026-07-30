@@ -390,9 +390,12 @@ startBtn.addEventListener("click", async () => {
   }
 });
 
+const CAM_ZOOM = 0.84;
+
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  video.style.transform = `scaleX(-1) scale(${CAM_ZOOM})`;
 }
 window.addEventListener("resize", resize);
 resize();
@@ -402,7 +405,10 @@ function mapPoint(lm) {
   const scale = Math.max(canvas.width / vw, canvas.height / vh);
   const ox = (canvas.width - vw * scale) / 2;
   const oy = (canvas.height - vh * scale) / 2;
-  return { x: (1 - lm.x) * vw * scale + ox, y: lm.y * vh * scale + oy };
+  const rx = (1 - lm.x) * vw * scale + ox;
+  const ry = lm.y * vh * scale + oy;
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  return { x: cx + (rx - cx) * CAM_ZOOM, y: cy + (ry - cy) * CAM_ZOOM };
 }
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
