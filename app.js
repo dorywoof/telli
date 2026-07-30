@@ -210,9 +210,11 @@ let bus, filter, sustainGain, oscs = [], thereminOsc, thereminGain;
 let guitarPlucks = [], electricPlucks = [], piano, guitarSampler, electricSampler;
 
 function initAudio() {
-  const limiter = new Tone.Limiter(-2).toDestination();
-  const reverb = new Tone.Reverb({ decay: 2.4, wet: 0.25 }).connect(limiter);
-  bus = new Tone.Gain(0.8).connect(reverb);
+  const mobile = matchMedia("(max-width: 900px)").matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const limiter = new Tone.Limiter(-1).toDestination();
+  const master = new Tone.Compressor({ threshold: -16, ratio: 3, attack: 0.006, release: 0.2 }).connect(limiter);
+  const reverb = new Tone.Reverb({ decay: mobile ? 1.8 : 2.4, wet: mobile ? 0.16 : 0.22 }).connect(master);
+  bus = new Tone.Gain(0.55).connect(reverb);
 
   const shimmer = new Tone.Chorus({ frequency: 0.6, delayTime: 3.5, depth: 0.5, wet: 0.3 }).connect(bus);
   shimmer.start();
@@ -342,6 +344,7 @@ startBtn.addEventListener("click", async () => {
   try {
     statusEl.textContent = t("statusAudio");
     unlockMobileAudio();
+    Tone.setContext(new Tone.Context({ latencyHint: "balanced", lookAhead: 0.08 }));
     await Tone.start();
     await resumeAudio();
     initAudio();
